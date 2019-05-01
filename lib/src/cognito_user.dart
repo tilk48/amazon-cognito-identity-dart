@@ -57,6 +57,35 @@ class CognitoUser {
     }
   }
 
+  Future<CognitoUserSession> completeNewPasswordChallenge(String newPassword) async{
+    final Map<String, String> challengeResponses = {
+      'USERNAME': this.username,
+      'NEW_PASSWORD': newPassword,
+    };
+    final authenticationHelper =
+        new AuthenticationHelper(pool.getUserPoolId().split('_')[1]);
+
+    getCachedDeviceKeyAndPassword();
+    if (_deviceKey != null) {
+      challengeResponses['DEVICE_KEY'] = _deviceKey;
+    }
+
+    final Map<String, dynamic> paramsReq = {
+      'ChallengeName': 'NEW_PASSWORD_REQUIRED',
+      'ChallengeResponses': challengeResponses,
+      'ClientId': this.pool.getClientId(),
+      'Session': _session,
+    };
+
+    if (getUserContextData() != null) {
+      paramsReq['UserContextData'] = getUserContextData();
+    }
+
+    final data = await client.request('RespondToAuthChallenge', paramsReq);
+
+    return _authenticateUserInternal(data, authenticationHelper);
+  }
+
   Future<CognitoUserSession> _authenticateUserInternal(
       dataAuthenticate, AuthenticationHelper authenticationHelper) async {
     final String challengeName = dataAuthenticate['ChallengeName'];
